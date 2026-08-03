@@ -200,6 +200,15 @@ async def update_session(session_id: str, title: str):
         return {"status": "updated"}
     return {"error": "Session not found"}
 
+@app.get("/api/sessions/{session_id}/history")
+async def get_session_history(session_id: str):
+    session = session_manager.get(session_id)
+    if not session:
+        # Return 404 so frontend fetch knows it failed
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Session not found")
+    return session.messages
+
 # === WebSocket Endpoint ===
 
 @app.websocket("/ws/{session_id}")
@@ -354,7 +363,8 @@ if _ui_dist is not None:
     async def spa_catchall(full_path: str):
         # Don't catch API or WebSocket routes
         if full_path.startswith("api/") or full_path.startswith("ws/"):
-            return {"error": "Not found"}
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404, detail="Not found")
         file_path = _ui_dist / full_path
         if file_path.is_file():
             return FileResponse(file_path)
