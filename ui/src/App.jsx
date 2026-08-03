@@ -12,6 +12,7 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [selectedModel, setSelectedModel] = useState(null);
+  const [pendingMessage, setPendingMessage] = useState(null);
 
 
   const {
@@ -51,12 +52,21 @@ function App() {
     if (window.innerWidth <= 768) setSidebarOpen(false);
   };
 
+  useEffect(() => {
+    if (isConnected && pendingMessage) {
+      sendMessage(pendingMessage);
+      setPendingMessage(null);
+    }
+  }, [isConnected, pendingMessage, sendMessage]);
+
   const handleSendMessage = async (text) => {
     // Auto-create a session if none exists
     if (!activeSessionId) {
       const provider = selectedProvider || 'auto';
       const model = selectedModel || null;
+      setPendingMessage(text);
       await createSession(provider, model);
+      return; // Don't call sendMessage yet; the useEffect will handle it
     }
     sendMessage(text);
   };
