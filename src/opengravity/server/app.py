@@ -238,8 +238,6 @@ async def websocket_chat(websocket: WebSocket, session_id: str):
                 if session.title == "New Chat" and len(session.messages) == 1:
                     session.title = user_message[:50] + ("..." if len(user_message) > 50 else "")
                 
-                # IMPORTANT: The Agent's on_stream expects a sync callback,
-                # but we need to send over websocket (async).
                 # We need to use an asyncio.Queue to bridge sync->async.
                 queue = asyncio.Queue()
                 
@@ -253,25 +251,19 @@ async def websocket_chat(websocket: WebSocket, session_id: str):
                     return await session.agent.run(user_message)
                 
                 async def stream_from_queue():
-                    while True:
-                        try:
-                            chunk = queue.get_nowait()
-                            msg = {"type": chunk.type, "content": chunk.content}
-                            if chunk.tool_call:
-                                msg["tool_call"] = {
-                                    "id": chunk.tool_call.id,
-                                    "name": chunk.tool_call.name,
-                                    "arguments": chunk.tool_call.arguments,
-                                }
-                            if chunk.tool_result:
-                                msg["tool_result"] = {
-                                    "name": chunk.tool_result.name,
-                                    "result": chunk.tool_result.result,
-                                    "is_error": chunk.tool_result.is_error,
-                                }
-                            await websocket.send_json(msg)
-                        except asyncio.QueueEmpty:
-                            await asyncio.sleep(0.01)
+                    while not queue.empty():
+                        chunk = queue.get_nowait()
+                        msg = {"type": chunk.type, "content": chunk.content}
+                        if chunk.tool_call:
+                            msg["tool_call_id"] = chunk.tool_call.id
+                            msg["name"] = chunk.tool_call.name
+                            msg["arguments"] = chunk.tool_call.arguments
+                        if chunk.tool_result:
+                            msg["tool_call_id"] = chunk.tool_result.tool_call_id
+                            msg["name"] = chunk.tool_result.name
+                            msg["result"] = chunk.tool_result.result
+                            msg["isError"] = chunk.tool_result.is_error
+                        await websocket.send_json(msg)
                 
                 # Run agent task
                 agent_task = asyncio.create_task(run_agent())
