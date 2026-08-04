@@ -5,7 +5,6 @@ import { fetchSessionHistory } from '../utils/api';
 export function useChat(sessionId) {
   const [messages, setMessages] = useState([]);
   const [isStreaming, setIsStreaming] = useState(false);
-  const { sendMessage: wsSendMessage, sendConfig, isConnected, lastMessage } = useWebSocket(sessionId);
 
   // Load history on mount
   useEffect(() => {
@@ -21,7 +20,7 @@ export function useChat(sessionId) {
       .catch(console.error);
   }, [sessionId]);
 
-  useEffect(() => {
+  const handleMessage = useCallback((lastMessage) => {
     if (!lastMessage) return;
 
     setMessages(prev => {
@@ -97,7 +96,9 @@ export function useChat(sessionId) {
       }
       return newMessages;
     });
-  }, [lastMessage]);
+  }, []);
+
+  const { sendMessage: wsSendMessage, sendConfig, isConnected } = useWebSocket(sessionId, handleMessage);
 
   const sendMessage = useCallback((content) => {
     // Add user message optimistically

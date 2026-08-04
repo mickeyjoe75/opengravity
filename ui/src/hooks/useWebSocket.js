@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-export function useWebSocket(sessionId) {
+export function useWebSocket(sessionId, onMessage) {
   const [isConnected, setIsConnected] = useState(false);
-  const [lastMessage, setLastMessage] = useState(null);
   const wsRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
+
 
   const connect = useCallback(() => {
     if (!sessionId) return;
@@ -23,7 +23,7 @@ export function useWebSocket(sessionId) {
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        setLastMessage(data);
+        if (onMessage) onMessage(data);
       } catch (err) {
         console.error('Failed to parse WS message:', err);
       }
@@ -67,5 +67,5 @@ export function useWebSocket(sessionId) {
     }
   }, []);
 
-  return { sendMessage, sendConfig, isConnected, lastMessage };
+  return { sendMessage, sendConfig, isConnected };
 }
